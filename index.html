@@ -86,6 +86,8 @@
       // This example requires the Places library. Include the libraries=places
       // parameter when you first load the API. For example:
       // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
+      let midpointLat = 40.771;
+      let midpointLng = -73.974;
 
       function initMap() {
         var map = new google.maps.Map(document.getElementById('map'), {
@@ -93,7 +95,6 @@
           center: {lat: 40.771, lng: -73.974},
           zoom: 13
         });
-
         new AutocompleteDirectionsHandler(map);
       }
 
@@ -172,20 +173,37 @@
         }, function(response, status) {
           const resp = response;
           const tripDuration = response.routes[0].legs[0].duration.value;
-          // console.log('response:', response);
+          console.log('response:', response);
           console.log('Duration full trip (secs):', tripDuration);
           const steps = response.routes[0].legs[0].steps;
-          let accumDuration = 0;
+          let prevAccumDuration = 0;
+          let newAccumDuration = 0;
           let logged = false;
           for (var i = 0; i < steps.length; i++) {
             const stepDuration = steps[i].duration.value;
-            accumDuration += stepDuration; 
-            if (accumDuration > tripDuration/2 && !logged) {
-              console.log('** Halfway point on leg ' + i)
+            newAccumDuration = prevAccumDuration + stepDuration; 
+            if (newAccumDuration > tripDuration/2 && !logged) {
+              console.log('** Halfway point on leg ' + i);
+              const stepStartLat = steps[i].start_location.lat();
+              const stepStartLng = steps[i].start_location.lng();
+              const stepEndLat = steps[i].end_location.lat();
+              const stepEndLng = steps[i].end_location.lng();
+              console.log('stepStart:', stepStartLat, stepStartLng);
+              console.log('stepEnd:', stepEndLat, stepEndLng);
+              const percentIntoStepForMidway = (tripDuration/2 - prevAccumDuration)/stepDuration;
+              midpointLat =  stepStartLat + (stepEndLat - stepStartLat) * percentIntoStepForMidway;
+              midpointLng =  stepStartLng + (stepEndLng - stepStartLng) * percentIntoStepForMidway;
+              console.log("midpoint:", midpointLat, midpointLng)
               logged = true;
             } 
-            console.log('Leg ' + i + " (secs) = "+ stepDuration + ", accumulated (secs) = " + accumDuration)
+            prevAccumDuration = newAccumDuration;
+            console.log('Leg ' + i + " (secs) = "+ stepDuration + ", accumulated (secs) = " + prevAccumDuration)
           }
+          // var marker = new google.maps.Marker({
+          //   position: {lat: midpointLat, lng: midpointLng},
+          //   map: map,
+          //   title: 'Rendezvous Area'
+          // });
           if (status === 'OK') {
             me.directionsDisplay.setDirections(response);
           } else {
